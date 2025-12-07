@@ -65,12 +65,17 @@ export default function App() {
       const res = await fetch(url);
       const data = await res.json();
 
-      const mappedType =
-        data.signal === "BUY"
-          ? SignalType.BUY
-          : data.signal === "SELL"
-          ? SignalType.SELL
-          : SignalType.HOLD;
+      const mappedType = (() => {
+  const s = String(data.signal).toUpperCase();
+
+  if (s.includes("BUY") || s.includes("LONG") || s.includes("UP"))
+      return SignalType.BUY;
+
+  if (s.includes("SELL") || s.includes("SHORT") || s.includes("DOWN"))
+      return SignalType.SELL;
+
+  return SignalType.HOLD;
+})();
 
       setCurrentSignal({
         type: mappedType,
@@ -147,28 +152,28 @@ export default function App() {
             <MarketChart data={candles} />
             <StatsPanel confidence={currentSignal.confidence} indicators={indicators} />
 
-            {/* 🔥 Timeframe Selector */}
-            <div className="w-full px-6 mt-4 flex justify-center">
-              <div className="inline-flex bg-black/60 border border-gray-800 rounded-full p-1 gap-1">
-                {["5s", "10s", "15s", "1m"].map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => {
-                      setTimeframe(tf as any);
-                      setCurrentSignal((prev) => ({ ...prev, timeframe: tf }));
-                    }}
-                    className={
-                      "px-3 py-1 rounded-full text-xs font-semibold transition-colors " +
-                      (timeframe === tf
-                        ? "bg-blue-500 text-white"
-                        : "bg-transparent text-gray-400 hover:bg-gray-800")
-                    }
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 👉 Timeframe Selector */}
+<div className="w-full px-6 mt-4 flex justify-center">
+  <div className="inline-flex bg-black/60 border border-gray-800 rounded-full p-1 gap-1">
+    {["5s", "10s", "15s", "1m"].map((tf) => (
+      <button
+        key={tf}
+        onClick={() => {
+          setTimeframe(tf as "5s" | "10s" | "15s" | "1m");
+          setCurrentSignal(prev => ({ ...prev, timeframe: tf }));
+        }}
+        className={
+          "px-3 py-1 rounded-full text-xs font-semibold transition-colors " +
+          (timeframe === tf
+            ? "bg-blue-500 text-white"
+            : "bg-transparent text-gray-400 hover:bg-gray-800")
+        }
+      >
+        {tf}
+      </button>
+    ))}
+  </div>
+</div>
 
             {/* Processing Log */}
             <div className="w-full px-6 mt-6">
