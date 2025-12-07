@@ -166,9 +166,13 @@ export default function App() {
 
             {/* PROCESSING LOG */}
             <div className="w-full px-6 mt-6">
-              <div className="text-[10px] text-gray-500 font-mono">PROCESSING LOG</div>
-              <div className="h-20 bg-black/50 border border-gray-800 rounded p-2 font-mono text-green-400/80 text-[10px]">
-                <p>> Backend: {API_BASE || "NO VITE_API_URL SET"}</p>
+              <p>&gt; Backend: {API_BASE || "NO VITE_API_URL SET"}</p>
+<p>&gt; Pair: {pair} | Timeframe: {timeframe}</p>
+{isAnalyzing ? (
+  <p className="animate-pulse">&gt; Analyzing pattern vectors...</p>
+) : (
+  <p>&gt; Last signal: {currentSignal.type}</p>
+)}
                 <p>> Pair: {pair} | Timeframe: {timeframe}</p>
                 {isAnalyzing ? (
                   <p className="animate-pulse">> Analyzing pattern vectors...</p>
