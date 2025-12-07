@@ -17,8 +17,8 @@ export default function App() {
   const [currentSignal, setCurrentSignal] = useState<TradeSignal>({
     type: SignalType.HOLD,
     confidence: 0,
-    pair,
-    timeframe,
+    pair: "EURUSD_OTC",
+    timeframe: "5s",
     reason: "Waiting for signal...",
     timestamp: Date.now(),
   });
@@ -31,16 +31,15 @@ export default function App() {
   });
 
   // ----------------------------
-  // Start mock candle stream
+  // Candle Stream
   // ----------------------------
   useEffect(() => {
     marketService.startStream((newCandle) => {
       setCandles((prev) => {
         const updated = [...prev, newCandle];
-        if (updated.length > 100) updated.shift();
+        if (updated.length > 120) updated.shift();
 
-        const ind = marketService.calculateIndicators(updated);
-        setIndicators(ind);
+        setIndicators(marketService.calculateIndicators(updated));
 
         return updated;
       });
@@ -50,11 +49,10 @@ export default function App() {
   }, []);
 
   // ----------------------------
-  // Generate AI Signal
+  // GENERATE SIGNAL
   // ----------------------------
   const handleGenerateSignal = async () => {
     if (isAnalyzing) return;
-
     setIsAnalyzing(true);
 
     try {
@@ -69,18 +67,17 @@ export default function App() {
           ? SignalType.SELL
           : SignalType.HOLD;
 
-      const newSignal: TradeSignal = {
+      setCurrentSignal({
         type: mappedType,
         confidence: data.confidence ?? 0,
         pair: data.pair ?? pair,
         timeframe: data.timeframe ?? timeframe,
         reason: data.note ?? "",
         timestamp: Date.now(),
-      };
+      });
 
-      setCurrentSignal(newSignal);
       setIndicators((prev) => ({ ...prev, rsi: data.rsi ?? prev.rsi }));
-    } catch (e) {
+    } catch (err) {
       setCurrentSignal((prev) => ({
         ...prev,
         type: SignalType.HOLD,
@@ -93,51 +90,60 @@ export default function App() {
   };
 
   // ----------------------------
-  // Change Pair
+  // CHANGE PAIR
   // ----------------------------
   const handleChangePair = () => {
     const p = window.prompt("Enter pair:", pair);
     if (p) {
-      setPair(p.trim());
-      setCurrentSignal((prev) => ({ ...prev, pair: p.trim() }));
+      const cleaned = p.trim();
+      setPair(cleaned);
+      setCurrentSignal((prev) => ({ ...prev, pair: cleaned }));
     }
   };
 
+  // ----------------------------
+  // RENDER UI
+  // ----------------------------
   return (
-    <div className="min-h-screen w-full bg-crypto-dark flex items-center justify-center font-sans text-white relative">
+    <div className="min-h-screen w-full bg-crypto-dark flex items-center justify-center text-white relative">
+      
+      {/* Background Effects */}
       <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none"></div>
-      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-blue-900/20 to-transparent"></div>
+      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-blue-900/20"></div>
 
-      <div className="w-full max-w-[420px] h-[100dvh] md:h-[90vh] md:max-h-[850px] bg-black md:rounded-[3rem] md:border-[8px] md:border-gray-800 relative overflow-hidden flex flex-col shadow-2xl">
-        
-        <div className="flex-1 overflow-y-auto pb-24 scrollbar-hide">
+      {/* PHONE FRAME */}
+      <div className="w-full max-w-[420px] h-[100dvh] bg-black md:rounded-[3rem] md:border-[8px] md:border-gray-800 overflow-hidden flex flex-col relative">
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto pb-24">
           <Header />
 
           <div className="flex flex-col items-center">
+
+            {/* MAIN SIGNAL DISPLAY */}
             <SignalDisplay signal={currentSignal} isAnalyzing={isAnalyzing} />
 
-            {/* PAIR + TIMEFRAME INFO */}
+            {/* Pair & Timeframe info */}
             <div className="px-6 text-center h-10 mb-2">
               <p className="text-[11px] text-gray-400">
                 Pair: <span className="text-blue-400">{pair}</span> • TF: {timeframe}
               </p>
-              {!isAnalyzing && currentSignal.reason && (
+              {!isAnalyzing && (
                 <p className="text-[11px] text-blue-300 font-mono mt-1">
                   "{currentSignal.reason}"
                 </p>
               )}
             </div>
 
-            {/* Chart */}
             <MarketChart data={candles} />
 
-            {/* Stats */}
             <StatsPanel confidence={currentSignal.confidence} indicators={indicators} />
 
-            {/* ---- TIMEFRAME SELECTOR ---- */}
+            {/* ------------------------- */}
+            {/* TIMEFRAME SELECTOR */}
+            {/* ------------------------- */}
             <div className="w-full px-6 mt-4 flex justify-center">
               <div className="inline-flex bg-black/60 border border-gray-800 rounded-full p-1 gap-1">
-                
                 {["5s", "10s", "15s", "1m"].map((tf) => (
                   <button
                     key={tf}
@@ -146,25 +152,22 @@ export default function App() {
                       setCurrentSignal((prev) => ({ ...prev, timeframe: tf }));
                     }}
                     className={
-                      "px-3 py-1 rounded-full text-xs font-semibold transition-colors " +
+                      "px-3 py-1 rounded-full text-xs font-semibold " +
                       (timeframe === tf
                         ? "bg-blue-500 text-white"
-                        : "bg-transparent text-gray-400 hover:bg-gray-800")
+                        : "text-gray-400 hover:bg-gray-800")
                     }
                   >
                     {tf}
                   </button>
                 ))}
-
               </div>
             </div>
 
             {/* PROCESSING LOG */}
             <div className="w-full px-6 mt-6">
-              <div className="text-[10px] text-gray-500 font-mono mb-1">
-                PROCESSING LOG
-              </div>
-              <div className="h-20 bg-black/50 rounded border border-gray-800 p-2 font-mono text-[10px] text-green-400/80">
+              <div className="text-[10px] text-gray-500 font-mono">PROCESSING LOG</div>
+              <div className="h-20 bg-black/50 border border-gray-800 rounded p-2 font-mono text-green-400/80 text-[10px]">
                 <p>> Backend: {API_BASE || "NO VITE_API_URL SET"}</p>
                 <p>> Pair: {pair} | Timeframe: {timeframe}</p>
                 {isAnalyzing ? (
@@ -174,51 +177,52 @@ export default function App() {
                 )}
               </div>
             </div>
+
           </div>
         </div>
 
-        {/* Bottom Button Section */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/90 pt-10 pb-6 px-4">
-          
+        {/* Bottom Actions */}
+        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black pt-10 pb-6 px-4">
+
           <button
             onClick={handleGenerateSignal}
             disabled={isAnalyzing || !API_BASE}
-            className={`w-full py-4 rounded-xl font-bold tracking-widest text-sm flex items-center justify-center gap-2 ${
-              isAnalyzing || !API_BASE
+            className={
+              "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 " +
+              (isAnalyzing || !API_BASE
                 ? "bg-blue-900/50 text-blue-300 cursor-wait"
-                : "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-            }`}
+                : "bg-gradient-to-r from-blue-600 to-blue-500 text-white")
+            }
           >
             {isAnalyzing ? (
               <>
-                <Settings className="animate-spin" size={18} />
-                PROCESSING DATA...
+                <Settings className="animate-spin" size={18} /> PROCESSING DATA...
               </>
             ) : (
               <>
-                <Zap size={18} />
-                AI GENERATION SIGNAL
+                <Zap size={18} /> AI GENERATION SIGNAL
               </>
             )}
           </button>
 
           <div className="grid grid-cols-2 gap-3 mt-3">
-            <button className="py-3 bg-gray-900 border border-gray-800 rounded-lg text-xs text-gray-300">
+            <button className="py-3 bg-gray-900 border border-gray-800 rounded-lg text-xs">
               AI NEURAL SETTINGS
             </button>
             <button
               onClick={handleChangePair}
-              className="py-3 bg-gray-900 border border-gray-800 rounded-lg text-xs text-gray-300"
+              className="py-3 bg-gray-900 border border-gray-800 rounded-lg text-xs"
             >
               CHANGE PAIR
             </button>
           </div>
 
-          <div className="flex items-center justify-center text-[9px] text-gray-600 mt-2">
+          <div className="text-gray-600 text-[9px] flex items-center justify-center mt-2">
             <Lock size={8} />
-            <span>SSL Secured • Powered by Flask AI Engine</span>
+            <span className="ml-1">SSL Secured • Powered by Flask AI Engine</span>
           </div>
         </div>
+
       </div>
     </div>
   );
